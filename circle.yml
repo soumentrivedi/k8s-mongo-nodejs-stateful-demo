@@ -1,0 +1,86 @@
+## Customize the test machine
+machine:
+  post:
+    - sudo curl -L -o /usr/bin/docker 'https://s3.amazonaws.com/circle-downloads/docker-1.9.1-circleci'
+    - sudo service docker start
+  # services:
+    # - docker #uncomment if using circleci.com or the container docker daemon
+  # Add some environment variables
+  environment:
+    IMAGE_REPO: "circleci/build-image"
+    BUILD_TARGET: $(cd $CIRCLE_PROJECT_REPONAME && git log --format=%B -n 1 | grep build-targets | sed 's/build-targets//' | tr -d ' ')
+    # a url that your ci system can hit to pull down your kube config file
+    #KUBEURL: file://./kubeconfig/config
+    # checksum for the config file (shasum)
+    #KUBECHECKSUM: 3f1b6ed5598cfd7a04fd39314db5df549cac82a4
+    # contexts from your config file that are used for deployment
+    KUBECONTEXTQA: tlacroix-kube-demo.npn.mckube.io
+    # KUBECONTEXTPROD: aws_kubernetes2
+    # update this to the directory where your yaml\json files are for kubernetes relative to your project root directory
+    KUBEDEPLOYMENTDIR: ./kubeyaml 
+    BUILD: ${CIRCLE_BUILD_NUM}
+    # used for interpod and interservice communication
+    # Must be lowercase and <= 24 characters
+    # defaulted to user-repo for circleci
+    # SERVICENAME: $(tr [A-Z] [a-z] <<< ${CIRCLE_PROJECT_USERNAME:0:8})-$(tr [A-Z] [a-z] <<< ${CIRCLE_PROJECT_REPONAME:0:15} | tr -d '_-')
+    # This uses the docker socket on the host instead of inside the container for caching\performance reasons
+    DOCKER_HOST: unix:///var/run/docker.sock # comment this out if using circleci.com or the container docker daemon
+    # the docker repo
+    # DOCKER_REGISTRY: docker-registry.yourcompany.com
+    # the docker container defaulted to user/project
+    CONTAINER1: $(tr [A-Z] [a-z] <<< ${CIRCLE_PROJECT_USERNAME:0:8})/$(tr [A-Z] [a-z] <<< ${CIRCLE_PROJECT_REPONAME:0:15}| tr -d '_-')
+    #https_proxy: https://xxx.xxx.xxx.xxx:8080/ #uncomment if you need to use a proxy to access the kubernetes api
+
+# Customize checkout
+# checkout:
+#  post:
+#    - git submodule sync
+#    - git submodule update --init # use submodules
+
+## Customize dependencies
+dependencies:
+  cache_directories:
+    - "~/.kube"
+  override:
+    - mkdir -p ~/.kube
+    - cp kubeconfig/*.* ~/.kube/
+    - cp kubeconfig/config ~/.kube/
+    - docker login -u ${dockeruser} -p ${dockerpass} -e ${dockeremail} ${DOCKER_REGISTRY}
+    # install any missing required binaries/config
+    # - chmod +x ./deploy/ensure-kubectl.sh && ./deploy/ensure-kubectl.sh ${KUBEURL}
+    - chmod +x ./deploy/ensure-kubectl.sh && ./deploy/ensure-kubectl.sh
+    # - docker build --pull -t ${DOCKER_REGISTRY}/${CONTAINER1} .
+    # - docker tag -f ${DOCKER_REGISTRY}/${CONTAINER1}:latest ${DOCKER_REGISTRY}/${CONTAINER1}:build${BUILD}
+
+test:
+  override:
+    # run the container and add a label
+    # do not specify a local port since the docker daemon is shared
+    # - docker run -p 3000 -d --label ${CONTAINER1} ${DOCKER_REGISTRY}/${CONTAINER1}:latest
+    # show how to execute a command in your container
+    # run any commands to test inside\outside of the container here
+    # - npm test
+    # stop the container
+    # - docker stop $(docker ps -a -q --filter "label=${CONTAINER1}")
+    # cleanup any stopped containers
+    - echo "run tests here"
+    - ~/.kube/kubectl get pods
+    - ~/.kube/kubectl get namespaces
+    - ~/.kube/kubectl get storageclasses
+    # - docker rm $(docker ps -a -q) || /bin/true
+    - sudo docker login -u ${dockeruser} -p ${dockerpass} -e ${dockeremail} ${DOCKER_REGISTRY}
+    - sudo docker version
+
+deployment:
+  qa:
+    branch: master
+    commands:
+       # - docker push ${DOCKER_REGISTRY}/${CONTAINER1}:build${BUILD}
+       # - docker push ${DOCKER_REGISTRY}/${CONTAINER1}:latest
+       # - chmod +x ./deploy/deploy-service.sh && ./deploy/deploy-service.sh ${KUBECONTEXTQA} ${KUBEDEPLOYMENTDIR}
+       #put integration tests here
+       - echo "put integration tests here"
+       - kubectl create namespace circleci-${CIRCLE_BUILD_NUM}
+       # - ./deploy/deploy-service.sh ${KUBECONTEXTPROD} ${KUBEDEPLOYMENTDIR} rolling
+       #put deployment verification tests here
+       - echo "put deployment verification tests here"

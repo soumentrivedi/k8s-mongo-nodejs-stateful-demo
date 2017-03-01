@@ -1,0 +1,19 @@
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority: ca.crt
+    server: "https://api.internal.tlacroix-kube-demo.npn.mckube.io/"
+  name: tlacroix-kube-demo.npn.mckube.io
+contexts:
+- context:
+    cluster: tlacroix-kube-demo.npn.mckube.io
+    user: strivedi
+  name: tlacroix-kube-demo.npn.mckube.io
+current-context: "tlacroix-kube-demo.npn.mckube.io"
+kind: Config
+preferences: {}
+users:
+- name: strivedi
+  user:
+    client-certificate: strivedi.crt
+    client-key: strivedi.key
